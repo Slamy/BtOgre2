@@ -3,6 +3,10 @@
 using namespace Ogre;
 using namespace BtOgre;
 
+#if BOOST_ASYNCHRONOUS == 1
+boost::lockfree::queue<MotionTransfer*> RigidBodyState::motion_transfers(1024);
+#endif
+
 RigidBodyState::RigidBodyState(SceneNode* node, const btTransform& transform, const btTransform& offset) :
 	mTransform(transform),
 	mCenterOfMassOffset(offset),
@@ -42,10 +46,18 @@ void RigidBodyState::setWorldTransform(const btTransform& in)
 	const auto transform = mTransform * mCenterOfMassOffset;
 	const auto rot = transform.getRotation();
 	const auto pos = transform.getOrigin();
+#if BOOST_ASYNCHRONOUS == 1
+	MotionTransfer* info = new MotionTransfer;
+	info->mNode = mNode;
+	info->pos = BtOgre::Convert::toOgre(pos);
+	info->orient = BtOgre::Convert::toOgre(rot);
 
-	//Set to the node
+	motion_transfers.push(info);
+#else
+	//Set to the node directly
 	mNode->_setDerivedOrientation({ rot.w(), rot.x(), rot.y(), rot.z() });
 	mNode->_setDerivedPosition({ pos.x(), pos.y(), pos.z() });
+#endif
 }
 
 void RigidBodyState::setNode(SceneNode* node)

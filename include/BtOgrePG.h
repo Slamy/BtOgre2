@@ -20,10 +20,28 @@
 #include <OgreSceneNode.h>
 #include "BtOgreExtras.h"
 
+
+#define BOOST_ASYNCHRONOUS 1
+
+#if BOOST_ASYNCHRONOUS == 1
+#include <boost/lockfree/queue.hpp>
+#endif
+
 namespace BtOgre
 {
 	//A MotionState is Bullet's way of informing you about updates to an object.
 	//Pass this MotionState to a btRigidBody to have your SceneNode updated automaticaly.
+
+
+#if BOOST_ASYNCHRONOUS == 1
+	class MotionTransfer
+	{
+	public:
+		Ogre::SceneNode *mNode;
+		Ogre::Vector3 pos;
+		Ogre::Quaternion orient;
+	};
+#endif
 
 	///RigidBody state to comunicate back the physics movements to the graphics
 	class RigidBodyState : public btMotionState
@@ -39,6 +57,9 @@ namespace BtOgre
 		Ogre::SceneNode *mNode;
 
 	public:
+#if BOOST_ASYNCHRONOUS == 1
+		static boost::lockfree::queue<MotionTransfer*> motion_transfers;
+#endif
 
 		///Create a rigid body state with a specified transform and offset
 		RigidBodyState(Ogre::SceneNode* node, const btTransform& transform, const btTransform& offset = btTransform::getIdentity());
